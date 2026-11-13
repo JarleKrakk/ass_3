@@ -1,0 +1,1024 @@
+---
+title: "MSB105_Assignment3"
+author: "Group 3; Jarle, Bruvik og Mats"
+institute: HVL
+papersize: a4
+lang: en-oxendict
+format: 
+  html: default
+  typst: default
+editor: visual
+echo: true
+eval: true
+---
+
+```{r}
+#| echo: false
+#| label: setup
+library(tidyverse)
+library(PxWebApiData)
+library(flextable)
+```
+
+## MSB105 Assignment 3
+
+```{r}
+knr <- as.character(
+  c(
+    1102, 1103, 1108, 1124, 1127, 1120, 1122, 1121, 1119, 
+    1144, 1130, 1106, 1146, 1149, 1216, 4612, 1145, 1133,
+    1134, 1135, 1154, 1160, 1211, 4611, 1129, 1141, 1142
+  )
+)
+```
+
+```{r}
+knavn <- c("Sandnes (-2019)", "Stavanger", "Nye-Sandnes", 
+           "Sola", "Randaberg", "Klepp", "Gjesdal", "Time", 
+           "Hå", "Kvitsøy", "Strand", "Haugesund", "Tysvær", 
+           "Karmøy", "Sveio (-2019)", "Sveio", "Bokn", 
+           "Hjelmeland", "Suldal", "Sauda", "Vindafjord (-2006)", 
+           "Vindafjord", "Etne (-2019)", "Etne", 
+           "Forsand (-2019)", "Finnøy (-2020)",
+           "Rennesøy (-2020)"
+)
+```
+
+```{r}
+#Get more info about table
+PxWebApiData:: ApiData(
+"http://data.ssb.no/api/v0/en/table/03321",
+returnApiQuery = TRUE
+) 
+```
+
+```{r}
+pend_02_25_ssb_boBF <- ApiData12(
+  urlToData = "03321",
+  ArbstedKomm = list("*"),
+  Bokommuen = knr,
+  Tid = as.character(
+    2002:2025
+    )
+  ) 
+#| cache: true
+```
+
+```{r}
+pend_02_25_ssb_arbBF <- ApiData12(
+  urlToData = "03321",
+  Bokommuen = list(c("*")),
+  ArbstedKomm = knr,
+  Tid = as.character(2002:2025)
+)
+#| cache: true
+```
+
+```{r}
+ApiData(
+  "03321",
+  returnApiQuery = TRUE
+)
+```
+
+```{r}
+pend_02_25_boBF <- pend_02_25_ssb_boBF %>% 
+  # Henter kommune navn fra desc df
+  mutate(
+    akom_navn = arbeidsstedskommune,
+    bkom_navn = bostedskommune ,
+    akom = paste("k", ArbstedKomm, sep = ""),
+    bkom = paste("k", Bokommuen, sep = ""),
+    # skifter navn og nummer for Etne og Sveio
+    akom = ifelse(akom == "k1211", "k4611", akom),
+    akom = ifelse(akom == "k1216", "k4612", akom),
+    bkom = ifelse(bkom == "k1211", "k4611", bkom),
+    bkom = ifelse(bkom == "k1216", "k4612", bkom),
+    akom_navn = ifelse(akom_navn == "Etne (-2019)", "Etne", akom_navn),
+    akom_navn = ifelse(akom_navn == "Sveio (-2019)", "Sveio", akom_navn),
+    bkom_navn = ifelse(bkom_navn == "Etne (-2019)", "Etne", bkom_navn),
+    bkom_navn = ifelse(bkom_navn == "Sveio (-2019)", "Sveio", bkom_navn)    
+  ) %>% 
+  # Endrer noen variabelnavn
+  rename(
+    aar = Tid,
+    pendlere = value 
+  )  %>%
+  select(aar, akom, akom_navn, bkom, bkom_navn, pendlere) %>% 
+  as_tibble()
+```
+
+```{r}
+print(pend_02_25_boBF)
+```
+
+```{r}
+pend_02_25_arbBF <- pend_02_25_ssb_arbBF %>% 
+  # Henter kommune navn fra desc df
+  mutate(
+    akom_navn = arbeidsstedskommune,
+    bkom_navn = bostedskommune ,
+    akom = paste("k", ArbstedKomm, sep = ""),
+    bkom = paste("k", Bokommuen, sep = ""),
+    # skifter navn og nummer for Etne og Sveio
+    akom = ifelse(akom == "k1211", "k4611", akom),
+    akom = ifelse(akom == "k1216", "k4612", akom),
+    bkom = ifelse(bkom == "k1211", "k4611", bkom),
+    bkom = ifelse(bkom == "k1216", "k4612", bkom),
+    akom_navn = ifelse(akom_navn == "Etne (-2019)", "Etne", akom_navn),
+    akom_navn = ifelse(akom_navn == "Sveio (-2019)", "Sveio", akom_navn),
+    bkom_navn = ifelse(bkom_navn == "Etne (-2019)", "Etne", bkom_navn),
+    bkom_navn = ifelse(bkom_navn == "Sveio (-2019)", "Sveio", bkom_navn)    
+  ) %>% 
+  # Endrer noen variabelnavn
+  rename(
+    aar = Tid,
+    pendlere = value 
+  )  %>%
+  select(aar, akom, akom_navn, bkom, bkom_navn, pendlere) %>% 
+  as_tibble()
+```
+
+```{r}
+print(pend_02_25_arbBF)
+```
+
+```{r}
+# knr Bokn-regionen utenom kommunene som inngår i Nye Stavanger,
+# Nye Sandnes og Vindafjord
+knr_u_SSV <- paste(
+  "k", 
+  c(
+    1124, 1127, 1120, 1122, 1121, 1119, 1144, 1130, 1106, 1146, 1149, 1145, 1133, 1134, 1135,  1102, 4611, 4612
+    ),
+  sep = ""
+)
+```
+
+```{r}
+pend_02_25_boBF <- pend_02_25_boBF %>% 
+  mutate(
+    nye_bkom = case_when(
+      bkom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+      bkom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+      bkom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+      # Øvrige  Bokna-region beholder sin bkom
+      TRUE ~ bkom
+    ),
+    nye_bkom_navn = case_when(
+      bkom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+      bkom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+      bkom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+      # Øvrige  Bokna-region beholder sitt bkom_navn
+      TRUE ~ bkom_navn
+    ),
+    nye_akom = case_when(
+      akom %in% c("k1102", "k1108", "k1129") ~ "k1108",
+      akom %in% c("k1103", "k1141", "k1142") ~ "k1103",
+      akom %in% c("k1154", "k1159", "k1160") ~ "k1160",
+      # Øvrige  Bokna-regionen beholder sin akom
+      akom %in% knr_u_SSV ~ akom,   
+      # Resten av landet kodes som knr "9999"
+      TRUE ~ "k9999"
+    ),
+    nye_akom_navn = case_when(
+      akom %in% c("k1102", "k1108", "k1129") ~ "Sandnes",
+      akom %in% c("k1103", "k1141", "k1142") ~ "Stavanger",
+      akom %in% c("k1154", "k1159", "k1160") ~ "Vindafjord",
+      # Øvrige Bokna-regionen beholder sitt akom_navn
+      akom %in% knr_u_SSV ~ akom_navn,  
+      # Resten av landet kodes som knr "RAL"
+      TRUE ~ "RAL"
+      )
+  )
+```
+
+```{r}
+pend_02_25_boBF_agg <- pend_02_25_boBF %>%
+  group_by(aar, nye_akom, nye_akom_navn, nye_bkom, nye_bkom_navn) %>%
+  summarise(pendlere = sum(pendlere), .groups = "drop")
+```
+
+```{r}
+print(pend_02_25_boBF_agg, n  = 24, nye_akom_navn = Stavanger)
+```
+
+```{r}
+pend_02_25_boBF_agg |>
+  distinct(nye_bkom) |> 
+  pull(nye_bkom) |> 
+  print(width = 70)
+```
+
+```{r}
+pend_02_25_boBF_agg |>
+  distinct(nye_akom) |> 
+  pull(nye_akom) |> 
+  print(width = 70)
+```
+
+```{r}
+pend_02_25_arbBF <- pend_02_25_arbBF %>%
+  mutate(
+    nye_akom = case_when(
+      akom %in% c("k1102", "k1108", "k1129") ~ "k1108",  # Sandnes
+      akom %in% c("k1103", "k1141", "k1142") ~ "k1103",  # Stavanger
+      akom %in% c("k1154", "k1159", "k1160") ~ "k1160",  # Vindafjord
+      TRUE ~ akom                            
+    ),
+    nye_akom_navn = case_when(
+      nye_akom == "k1108" ~ "Sandnes",
+      nye_akom == "k1103" ~ "Stavanger",
+      nye_akom == "k1160" ~ "Vindafjord",
+      TRUE ~ akom_navn
+    ),
+    nye_bkom = case_when(
+      bkom %in% c("k1102", "k1108", "k1129") ~ "k1108",  # Sandnes
+      bkom %in% c("k1103", "k1141", "k1142") ~ "k1103",  # Stavanger
+      bkom %in% c("k1154", "k1159", "k1160") ~ "k1160",  # Vindafjord
+      bkom %in% knr_u_SSV ~ bkom,  
+      TRUE ~ "k9999" 
+    ),
+    nye_bkom_navn = case_when(
+      nye_bkom == "k1108" ~ "Sandnes",
+      nye_bkom == "k1103" ~ "Stavanger",
+      nye_bkom == "k1160" ~ "Vindafjord",
+      nye_bkom == "k9999" ~ "RAL",
+      TRUE ~ bkom_navn
+    )
+  )
+```
+
+```{r}
+pend_02_25_arbBF_agg <- pend_02_25_arbBF %>%
+  group_by(aar, nye_akom, nye_akom_navn, nye_bkom, nye_bkom_navn) %>%
+  summarise(pendlere = sum(pendlere), .groups = "drop")
+```
+
+```{r}
+pend_02_25_arbBF_agg |>
+  distinct(nye_bkom) |> 
+  pull(nye_bkom) |> 
+  print(width = 70)
+```
+
+```{r}
+pend_02_25_arbBF_agg |>
+  distinct(nye_akom) |> 
+  pull(nye_akom) |> 
+  print(width = 70)
+```
+
+```{r}
+pend_02_25_arbBF_agg <- pend_02_25_arbBF_agg |>
+  rename(
+    akom = nye_akom,
+    akom_navn = nye_akom_navn,
+    bkom = nye_bkom,
+    bkom_navn = nye_bkom_navn
+  )
+```
+
+```{r}
+pend_02_25_boBF_agg <- pend_02_25_boBF_agg |>
+  rename(
+    akom = nye_akom,
+    akom_navn = nye_akom_navn,
+    bkom = nye_bkom,
+    bkom_navn = nye_bkom_navn
+  )
+```
+
+```{r}
+names(pend_02_25_arbBF_agg)
+```
+
+```{r}
+names(pend_02_25_boBF_agg)
+```
+
+```{r}
+boBF_arb_RAL <- pend_02_25_boBF_agg |>
+  filter(akom == "k9999")
+```
+
+```{r}
+pend_02_25 <- bind_rows(
+  pend_02_25_arbBF_agg,
+  boBF_arb_RAL
+  )
+```
+
+```{r}
+names(pend_02_25)
+```
+
+```{r}
+dim(pend_02_25)
+```
+
+```{r}
+names(pend_02_25_arbBF_agg)
+```
+
+```{r}
+dim(pend_02_25_arbBF_agg)
+```
+
+```{r}
+names(pend_02_25_boBF_agg)
+```
+
+```{r}
+dim(pend_02_25_boBF_agg)
+```
+
+```{r}
+rm(boBF_arb_RAL, pend_02_25_arbBF, pend_02_25_boBF, 
+   pend_02_25_ssb_arbBF, pend_02_25_ssb_boBF
+   )
+```
+
+```{r}
+# Punkt 6 – Beregning av RAL fra SSB-tabell 11616
+fnr <- c("30", "01", "02", "06", "03", "34", "04", "05", "38",
+         "07", "08", "42", "09", "10", "11", "46", "12", "14",
+         "15", "50", "16", "17", "18", "54", "19", "20", "31",
+         "32", "33", "39", "40", "55", "56")
+
+ral_data <- PxWebApiData::ApiData12(
+  urlToData = "11616",
+  Region = fnr,
+  Kjonn = c("1", "2"),
+  Alder = "15-74",
+  ContentsCode = "Bosatt",
+  Tid = as.character(2002:2025)
+)
+
+tot_arb_HL <- ral_data |>
+  dplyr::group_by(aar = Tid) |>
+  dplyr::summarise(
+    arbtak_HL = sum(value, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+BF <- c(knr_u_SSV, "k1103", "k1108", "k1160")
+
+bBFjHL <- pend_02_25 |>
+  dplyr::filter(bkom %in% BF) |>
+  dplyr::group_by(aar) |>
+  dplyr::summarise(bBFjHL = sum(pendlere), .groups = "drop")
+
+bRALjBF <- pend_02_25 |>
+  dplyr::filter(bkom == "k9999") |>
+  dplyr::group_by(aar) |>
+  dplyr::summarise(bRALjBF = sum(pendlere), .groups = "drop")
+
+RAL <- tot_arb_HL |>
+  dplyr::left_join(bBFjHL, by = "aar") |>
+  dplyr::left_join(bRALjBF, by = "aar") |>
+  dplyr::mutate(bRALjRAL = arbtak_HL - bBFjHL - bRALjBF)
+
+p_bRALjRAL <- RAL |>
+  dplyr::transmute(
+    aar,
+    akom = "k9999",
+    akom_navn = "RAL",
+    bkom = "k9999",
+    bkom_navn = "RAL",
+    pendlere = bRALjRAL
+  )
+
+pend_02_25 <- dplyr::bind_rows(pend_02_25, p_bRALjRAL)
+print(dim(pend_02_25))
+
+# Punkt 7 – Legg til totaler
+pend_grunnlag <- pend_02_25
+
+totalt_arb <- pend_grunnlag |>
+  dplyr::group_by(aar, akom, akom_navn) |>
+  dplyr::summarise(pendlere = sum(pendlere), .groups = "drop") |>
+  dplyr::mutate(bkom = "k0000", bkom_navn = "TotaltArb")
+
+totalt_bo <- pend_grunnlag |>
+  dplyr::group_by(aar, bkom, bkom_navn) |>
+  dplyr::summarise(pendlere = sum(pendlere), .groups = "drop") |>
+  dplyr::mutate(akom = "k0000", akom_navn = "TotaltBo")
+
+pend_02_25 <- dplyr::bind_rows(
+  pend_grunnlag, totalt_arb, totalt_bo
+)
+
+total_HL <- tot_arb_HL |>
+  dplyr::transmute(
+    aar,
+    akom = "k0000",
+    akom_navn = "TotaltBo",
+    bkom = "k0000",
+    bkom_navn = "TotaltArb",
+    pendlere = arbtak_HL
+  )
+
+pendle_data_02_25 <- dplyr::bind_rows(pend_02_25, total_HL)
+print(dim(pendle_data_02_25))
+
+# Punkt 8 – Pendlerandeler i prosent
+andel_pendle_data_02_25 <- pendle_data_02_25 |>
+  tidyr::unite(knrN, akom, akom_navn) |>
+  dplyr::group_by(aar, bkom, bkom_navn) |>
+  tidyr::pivot_wider(names_from = knrN, values_from = pendlere) |>
+  tibble::as_tibble() |>
+  dplyr::mutate(
+    dplyr::across(
+      .cols = k1103_Stavanger:k0000_TotaltBo,
+      .fns = function(x) round(100 * x / k0000_TotaltBo, 4)
+    )
+  ) |>
+  dplyr::ungroup()
+
+print(dim(andel_pendle_data_02_25))
+
+# Punkt 9 – Kontroller pendlerandelene for 2017
+andel_pendle_data_02_25 |>
+  dplyr::filter(aar == "2017") |>
+  print(n = 22, width = Inf)
+
+# Punkt 10 – Bo- og arbeidsmarkedsregioner
+reg49 <- paste0("k", c(1103, 1108, 1124, 1127, 1120,
+                        1122, 1121, 1119, 1144, 1130))
+reg50 <- paste0("k", c(1106, 1146, 1149, 4612, 1145))
+reg51 <- "k1133"
+reg52 <- "k1134"
+reg53 <- "k1135"
+reg55 <- paste0("k", c(1160, 4611))
+
+ba_region <- function(x) {
+  dplyr::case_when(
+    x %in% reg49 ~ "49",
+    x %in% reg50 ~ "50",
+    x %in% reg51 ~ "51",
+    x %in% reg52 ~ "52",
+    x %in% reg53 ~ "53",
+    x %in% reg55 ~ "55",
+    TRUE ~ "99"
+  )
+}
+
+pend_ba <- pend_grunnlag |>
+  dplyr::mutate(
+    ba_reg_bo = paste0("bo", ba_region(bkom)),
+    ba_reg_arb = paste0("arb", ba_region(akom))
+  )
+
+print(dim(pend_ba))
+
+# Punkt 11 – Pendlematrise for region 49 i 2015
+matrise_49_2015 <- pend_ba |>
+  dplyr::filter(aar == "2015") |>
+  dplyr::mutate(
+    bosted = dplyr::if_else(ba_reg_bo == "bo49", bkom, "k9999"),
+    arbeidssted = dplyr::if_else(ba_reg_arb == "arb49", akom, "k9999")
+  ) |>
+  dplyr::group_by(bosted, arbeidssted) |>
+  dplyr::summarise(pendlere = sum(pendlere), .groups = "drop") |>
+  tidyr::pivot_wider(
+    names_from = arbeidssted,
+    values_from = pendlere,
+    values_fill = 0
+  ) |>
+  dplyr::arrange(bosted)
+print(matrise_49_2015, width = Inf)
+```
+
+```{r}
+# Punkt 11 – Pendlematrise for region 49 i 2020
+matrise_49_2020 <- pend_ba |>
+  dplyr::filter(aar == "2020") |>
+  dplyr::mutate(
+    bosted = dplyr::if_else(ba_reg_bo == "bo49", bkom, "k9999"),
+    arbeidssted = dplyr::if_else(ba_reg_arb == "arb49", akom, "k9999")
+  ) |>
+  dplyr::group_by(bosted, arbeidssted) |>
+  dplyr::summarise(pendlere = sum(pendlere), .groups = "drop") |>
+  tidyr::pivot_wider(
+    names_from = arbeidssted,
+    values_from = pendlere,
+    values_fill = 0
+  ) |>
+  dplyr::arrange(bosted)
+print(matrise_49_2020, width = Inf)
+```
+
+Hvor mange bodde i Sola(1124) og jobbet i Kvitsøy(1144) i 2020? Leser av rad 7, kolonne 11 og finner verdien 18.
+
+```{r}
+matrise_49_2020 |>
+  filter(bosted == "k1124") |>
+  select(k1144)
+```
+
+Hvor mange som bor utenfor bo- og arbeidsmarkedssone 49 arbeidet i Sandnes (1108) i 2020? Leser av rad 11, kolonne 3 og får 4050
+
+```{r}
+matrise_49_2020 |>
+  filter(bosted == "k9999") |>
+  select(k1108)
+```
+
+Hvilke kommuner i bo- og arbeidsmarkedregion 49 hadde i 2020 flere arbeidstakere som pendlet ut av regionen enn det var arbeidstakere utenfor regionen som pendlet inn til kommunen?
+
+```{r}
+utpendling <- pend_ba |>
+  filter(
+    aar == "2020",
+    ba_reg_bo == "bo49",
+    ba_reg_arb != "arb49"
+  ) |>
+  group_by(bkom) |>
+  summarise(ut_av_region = sum(pendlere))
+
+innpendling <- pend_ba |>
+  filter(
+    aar == "2020",
+    ba_reg_bo != "bo49",
+    ba_reg_arb == "arb49"
+  ) |>
+  group_by(akom) |>
+  summarise(inn_fra_region = sum(pendlere))
+
+sammenligning <- full_join(
+  utpendling,
+  innpendling,
+  by = c("bkom" = "akom")
+) |>
+  replace_na(list(
+    ut_av_region = 0,
+    inn_fra_region = 0
+  )) |>
+  mutate(
+    netto = ut_av_region - inn_fra_region
+  )
+
+sammenligning
+```
+
+Hå(1119), Klepp(1120), Time(1121), Gjesdal(1122), Randaberg(1127) og Stradn(1130) hadde flere som pendlet ut av kommunen enn inn for å arbeide.
+
+```{r}
+tab_pendlere <- function(data, knr, y = 2003, n =6) {
+  data = filter(data, bkom == knr)
+  data = filter(data, !akom %in% c(knr, "k0000"))
+  data = filter(data, year(aar) == y)
+  data = arrange(data, desc(andel))
+  data = head(data, n = n)
+  data = select(data, `Place of work` = akom_navn, `Prop. in %` = andel)
+  flxtab = as_flextable(data, show_coltype = FALSE, max_row = 30)
+  flxtab = delete_part(flxtab, "footer")
+  flxtab = theme_booktabs(flxtab)
+  flxtab = line_spacing(flxtab, space = 0.3)
+}
+```
+
+```{r}
+andel_pendle_data_02_25_long <- andel_pendle_data_02_25 |>
+  pivot_longer(
+    cols = k1103_Stavanger:k9999_RAL,
+    names_to = "kommune",
+    values_to = "andel"
+  ) |>
+  separate(
+    kommune,
+    into = c("akom", "akom_navn"),
+    sep = "_"
+  ) 
+```
+
+```{r}
+samme_kommune <- andel_pendle_data_02_25_long |>
+  filter(akom == bkom,
+         bkom!="k9999") |>
+  mutate(aar = as.numeric(aar))
+ggplot(
+  samme_kommune,
+  aes(
+    x = aar,
+    y = andel,
+    colour = bkom,
+    group = bkom
+  )
+) +
+  geom_line(linewidth = 0.7) +
+  labs(
+    x = "År",
+    y = "Andel (%)",
+    colour = "Kommune"
+  ) +
+  scale_x_continuous(
+    breaks = seq(2005, 2025, by = 5)
+  ) +
+  theme(
+    legend.position = "bottom"
+  ) +
+  guides(
+    colour = guide_legend(nrow = 2)
+  )
+```
+
+```{r}
+samme_kommune |>
+  filter(aar == 2025) |>
+  arrange(desc(andel)) |>
+  select(
+    aar,
+    akom,
+    akom_navn,
+    bkom,
+    Bosted = bkom_navn,
+    andel
+  )
+```
+
+```{r}
+intern_utvalg <- samme_kommune |>
+  filter(
+    bkom %in% c(
+      "k1103",
+      "k1119",
+      "k1130",
+      "k1133",
+      "k1144"
+    )
+  )
+ggplot(
+  intern_utvalg,
+  aes(
+    x = aar,
+    y = andel,
+    colour = bkom_navn
+  )
+) +
+  geom_line(linewidth = 1.5) +
+  labs(
+    x = "År",
+    y = "Andel",
+    colour = "Bosted"
+  ) +
+  scale_x_continuous(
+    breaks = seq(2005, 2025, by = 5)
+  ) +
+  scale_colour_manual(
+    values = c(
+      "Hjelmeland" = "#E67E73",
+      "Hå" = "#A4A528",
+      "Kvitsøy" = "#5DB47D",
+      "Stavanger" = "#5AA2E0",
+      "Strand" = "#C96AE8"
+    )
+  ) +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+samtlige kommuner i utvalget har lavere internpendling i 2025 enn i 2002 så nei vi ser ikke effekt av "det grønne skiftet" at flere jobber i kommunen de bor (ut fra disse datene).
+
+```{r}
+plot_pendlere <- function(data, knr, grense = 1){
+
+  data |>
+    filter(
+      bkom == knr,
+      akom != knr,
+      andel > grense
+    ) |>
+    mutate(
+      aar = as.numeric(aar)
+    ) |>
+    ggplot(
+      aes(
+        x = aar,
+        y = andel,
+        colour = akom_navn
+      )
+    ) +
+    geom_line(linewidth = 1.2) +
+    labs(
+      x = "År",
+      y = "Andel (%)",
+      colour = "Arbeidssted"
+    ) +
+    scale_x_continuous(
+      breaks = seq(2005, 2025, by = 5)
+    ) +
+    theme(
+      legend.position = "bottom"
+    )
+}
+
+```
+
+```{r}
+plot_pendlere(
+  andel_pendle_data_02_25_long,
+  "k1103",
+  grense = 1
+)
+```
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1103",
+  y = 2025,
+  n = 5
+) |>
+  colformat_double(digits = 1)
+```
+
+```{r}
+plot_pendlere(
+  andel_pendle_data_02_25_long,
+  "k1108",
+  grense = 1.7
+)
+```
+
+2002, bor i sandnes
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1108",
+  y = 2002,
+  n = 5
+) |>
+  colformat_double(digits = 1)
+```
+
+2013, bor i sandnes
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1108",
+  y = 2013,
+  n = 5
+) |>
+  colformat_double(digits = 1)
+```
+
+2025, bor i sandnes
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1108",
+  y = 2025,
+  n = 5
+) |>
+  colformat_double(digits = 1)
+```
+
+Sola
+
+```{r}
+plot_pendlere(
+  andel_pendle_data_02_25_long,
+  "k1124",
+  grense = 1.7
+)
+```
+
+2023, bor i Sola
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1124",
+  y = 2023,
+  n = 5
+) |>
+  colformat_double(digits = 1)
+```
+
+Klepp
+
+```{r}
+plot_pendlere(
+  andel_pendle_data_02_25_long,
+  "k1120",
+  grense = 1.
+)
+```
+
+2025, bor i Klepp
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1120",
+  y = 2025,
+  n = 10
+) |>
+  colformat_double(digits = 1)
+```
+
+Nesten 70 prosent av den arbeidende befolkning som bor i klepp pendler ut av kommunen for å arbeide, siden 2002 har særlig arbeidspendling til Sola økt. Muligens knyttet til økt aktivitet på flyplassen og/eller Forus
+
+Haugesund
+
+```{r}
+plot_pendlere(
+  andel_pendle_data_02_25_long,
+  "k1106",
+  grense = 1.
+)
+```
+
+2025, bor i Haugesund
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1106",
+  y = 2025,
+  n = 5
+) |>
+  colformat_double(digits = 1)
+```
+
+Karmøy
+
+```{r}
+plot_pendlere(
+  andel_pendle_data_02_25_long,
+  "k1149",
+  grense = 1.
+)
+```
+
+2025, bor i Karmøy
+
+```{r}
+tab_pendlere(
+  andel_pendle_data_02_25_long |>
+    mutate(aar = lubridate::ymd(paste0(aar, "-01-01"))),
+  "k1149",
+  y = 2025,
+  n = 6
+) |>
+  colformat_double(digits = 1)
+```
+
+```{r}
+tab_pendlematrise <- function(data, aarstall){
+
+  data |>
+    filter(aar == as.character(aarstall)) |>
+    select(bkom, akom, pendlere) |>
+    pivot_wider(
+      names_from = akom,
+      values_from = pendlere
+    ) |>
+    as_flextable(
+      show_coltype = FALSE,
+      max_row = 30
+    ) |>
+    rotate(
+      rotation = "tbrl",
+      part = "header"
+    ) |>
+    fontsize(
+      size = 5,
+      part = "all"
+    ) |>
+    line_spacing(
+      space = 0.3,
+      part = "all"
+    ) |>
+    set_table_properties(
+      width = 0.25,
+      layout = "autofit"
+    ) |>
+    padding(padding = 3) |>
+    delete_part("footer")
+}
+```
+
+```{r}
+#| label: tbl-pm2002
+#| tbl-cap: Pendlematrise år 2002.
+tab_pendlematrise(
+  pend_02_25,
+  2002
+)
+```
+
+```{r}
+#| label: tbl-pm2005
+#| tbl-cap: Pendlematrise år 2005.
+tab_pendlematrise(
+  pend_02_25,
+  2005
+)
+```
+
+```{r}
+#| label: tbl-pm2010
+#| tbl-cap: Pendlematrise år 2010.
+tab_pendlematrise(
+  pend_02_25,
+  2010
+)
+```
+
+```{r}
+#| label: tbl-pm2015
+#| tbl-cap: Pendlematrise år 2015.
+tab_pendlematrise(
+  pend_02_25,
+  2015
+)
+```
+
+```{r}
+#| label: tbl-pm2020
+#| tbl-cap: Pendlematrise år 2020.
+tab_pendlematrise(
+  pend_02_25,
+  2020
+)
+```
+
+```{r}
+#| label: tbl-pm2025
+#| tbl-cap: Pendlematrise år 2025.
+tab_pendlematrise(
+  pend_02_25,
+  2025
+)
+```
+
+```{r}
+tab_pendlematrise <- function(data, aarstall){
+
+  kommune_navn <- c(
+    "k1103" = "Stavanger",
+    "k1106" = "Haugesund",
+    "k1108" = "Sandnes",
+    "k1119" = "Hå",
+    "k1120" = "Klepp",
+    "k1121" = "Time",
+    "k1122" = "Gjesdal",
+    "k1124" = "Sola",
+    "k1127" = "Randaberg",
+    "k1130" = "Strand",
+    "k1133" = "Hjelmeland",
+    "k1134" = "Suldal",
+    "k1135" = "Sauda",
+    "k1144" = "Kvitsøy",
+    "k1145" = "Bokn",
+    "k1146" = "Tysvær",
+    "k1149" = "Karmøy",
+    "k1160" = "Vindafjord",
+    "k4611" = "Etne",
+    "k4612" = "Sveio",
+    "k9999" = "Resten av landet",
+    "k0000" = "Total"
+  )
+
+  data |>
+    filter(aar == as.character(aarstall)) |>
+    mutate(
+      bkom = recode(bkom, !!!kommune_navn),
+      akom = recode(akom, !!!kommune_navn)
+    ) |>
+    select(bkom, akom, pendlere) |>
+    pivot_wider(
+      names_from = akom,
+      values_from = pendlere
+    ) |>
+    rename(` Arbeidsstedskommune → /Bostedskommune ↓` = bkom) |>
+    as_flextable()
+}
+```
+
+```{r}
+#| label: tbl-pm2025
+#| tbl-cap: Pendlematrise for 2025. Rader viser bostedskommune og kolonner viser arbeidsstedskommune.
+
+tab_pendlematrise(
+  pend_02_25,
+  2025
+)
+```
+
+
+
